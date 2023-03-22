@@ -1,26 +1,29 @@
 package router
 
 import (
+	"net/http"
 	"testAPI/controller"
 )
 
 type router struct {
-	controller controller.Liste
+	routeList controller.Sender
 }
 
 type Router interface {
-	Run(string)
+	Run(url string)
 }
 
-func NewRouter(cL controller.Liste) Router {
-	router := &router{controller: cL}
+func NewRouter(s controller.Sender) Router {
+	router := &router{routeList: s}
 	router.setup()
 
 	return router
 }
 
-func (r *router) Run(url string) {}
+func (r *router) Run(url string) {
+	http.ListenAndServe(url, nil)
+}
 
 func (r *router) setup() {
-	r.controller.GetList()
+	http.HandleFunc("/get", r.routeList.SendList)
 }

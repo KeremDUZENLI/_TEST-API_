@@ -7,13 +7,13 @@ import (
 )
 
 var (
-	URL    string
-	URL_MY string
+	DB  string
+	URL string
 )
 
 func Load() {
 	godotenv.Load(".env")
 
+	DB = os.Getenv("DB")
 	URL = os.Getenv("URL")
-	URL_MY = os.Getenv("URL_MY")
 }

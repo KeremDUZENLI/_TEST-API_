@@ -7,27 +7,27 @@ import (
 	"testAPI/repository"
 )
 
-type fakeService struct {
-	fakeRepository repository.FakeDatabase
+type holder struct {
+	holdList repository.Database
 }
 
-type FakeService interface {
-	GetListByRepo() model.ApiResponse
+type Holder interface {
+	HoldList() model.DatabaseModelList
 }
 
-func NewService(repository repository.FakeDatabase) FakeService {
-	return fakeService{fakeRepository: repository}
+func NewService(d repository.Database) Holder {
+	return holder{holdList: d}
 }
 
-func (fS fakeService) GetListByRepo() model.ApiResponse {
-	response := fS.fakeRepository.GetListFromFakeDatabase()
+func (h holder) HoldList() model.DatabaseModelList {
+	databaseResult := h.holdList.FindPosts()
 
-	var apiResponse model.ApiResponse
-	err := json.NewDecoder(response.Body).Decode(&apiResponse)
+	var dML model.DatabaseModelList
 
+	err := json.NewDecoder(databaseResult.Body).Decode(&dML)
 	if err != nil {
-		fmt.Println("API isteği gönderilemedi:", err)
+		fmt.Println(err)
 	}
 
-	return apiResponse
+	return dML
 }

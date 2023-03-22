@@ -6,23 +6,20 @@ import (
 	"testAPI/common/env"
 )
 
-type fakeDatabase struct{}
+type database struct{}
 
-type FakeDatabase interface {
-	GetListFromFakeDatabase() *http.Response
+type Database interface {
+	FindPosts() *http.Response
 }
 
-func NewRepository() FakeDatabase {
-	return &fakeDatabase{}
+func NewRepository() Database {
+	return &database{}
 }
 
-func (fD fakeDatabase) GetListFromFakeDatabase() *http.Response {
-	response, err := http.Get(env.URL)
-
+func (database) FindPosts() *http.Response {
+	response, err := http.Get(env.DB)
 	if err != nil {
-		fmt.Println("API isteği gönderilemedi:", err)
+		fmt.Println(err)
 	}
-
 	return response
-	// defer response.Body.Close()
 }

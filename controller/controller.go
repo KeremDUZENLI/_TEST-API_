@@ -2,27 +2,23 @@ package controller
 
 import (
 	"fmt"
+	"net/http"
 	"testAPI/service"
 )
 
-type liste struct {
-	service service.FakeService
+type sender struct {
+	sendList service.Holder
 }
 
-type Liste interface {
-	GetList()
+type Sender interface {
+	SendList(w http.ResponseWriter, r *http.Request)
 }
 
-func NewController(sFS service.FakeService) Liste {
-	return &liste{sFS}
+func NewController(h service.Holder) Sender {
+	return &sender{sendList: h}
 }
 
-func (l liste) GetList() {
-	res := l.service.GetListByRepo()
-
-	fmt.Println("API response:", res.Liste)
-
-	for _, post := range res.Liste {
-		fmt.Printf("Post %d: %s\n", post.ID, post.Title)
-	}
+func (s sender) SendList(w http.ResponseWriter, r *http.Request) {
+	serviceResult := s.sendList.HoldList()
+	fmt.Fprint(w, serviceResult.String())
 }
