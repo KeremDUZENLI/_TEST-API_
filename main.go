@@ -12,7 +12,7 @@ func main() {
 	env.Load()
 	router := setupAllDependencies()
 
-	router.Run(env.URL)
+	router.Run(env.URL_MY)
 }
 
 func setupAllDependencies() router.Router {
