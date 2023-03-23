@@ -9,9 +9,20 @@ import (
 
 // .env
 var (
-	DB  = "https://my-json-server.typicode.com/typicode/demo/db"
-	URL = ":8080"
+	eDB  = "https://my-json-server.typicode.com/typicode/demo/db"
+	eURL = ":8080"
 )
+
+// common/env/variables
+var (
+	DB  string
+	URL string
+)
+
+func Load() {
+	DB = eDB
+	URL = eURL
+}
 
 // model/model.go
 type DatabaseModel1 struct {
@@ -35,8 +46,34 @@ type DatabaseModelList struct {
 	Profiles DatabaseModel3   `json:"profile"`
 }
 
+func (d DatabaseModelList) String() string {
+	var str strings.Builder
+
+	printer(&str, d.Posts...)
+	printer(&str, d.Comments...)
+	printer(&str, d.Profiles)
+
+	return str.String()
+}
+
+func printer[T any](str *strings.Builder, base ...T) {
+	for _, model := range base {
+		str.WriteString(fmt.Sprintf("%v\n", model))
+	}
+}
+
 // repository/repository.go
-func FindPosts() *http.Response {
+type database struct{}
+
+type Database interface {
+	FindPosts() *http.Response
+}
+
+func NewRepository() Database {
+	return &database{}
+}
+
+func (database) FindPosts() *http.Response {
 	response, err := http.Get(DB)
 	if err != nil {
 		fmt.Println(err)
@@ -45,8 +82,20 @@ func FindPosts() *http.Response {
 }
 
 // service/service.go
-func HoldList() DatabaseModelList {
-	databaseResult := FindPosts()
+type holder struct {
+	holdList Database
+}
+
+type Holder interface {
+	HoldList() DatabaseModelList
+}
+
+func NewService(d Database) Holder {
+	return holder{holdList: d}
+}
+
+func (h holder) HoldList() DatabaseModelList {
+	databaseResult := h.holdList.FindPosts()
 
 	var dML DatabaseModelList
 	err := json.NewDecoder(databaseResult.Body).Decode(&dML)
@@ -57,48 +106,71 @@ func HoldList() DatabaseModelList {
 }
 
 // controller/controller.go
-func SendList(w http.ResponseWriter, r *http.Request) {
-	serviceResult := HoldList()
-	fmt.Fprintf(w, convertString(serviceResult))
+type sender struct {
+	sendList Holder
 }
 
-func convertString(d DatabaseModelList) string {
-	var str strings.Builder
+type Sender interface {
+	SendList(w http.ResponseWriter, r *http.Request)
+}
 
-	for _, v := range d.Posts {
-		str.WriteString(fmt.Sprintf("%v\n", v))
-	}
+func NewController(h Holder) Sender {
+	return &sender{sendList: h}
+}
 
-	for _, v := range d.Comments {
-		str.WriteString(fmt.Sprintf("%v\n", v))
-	}
-
-	str.WriteString(fmt.Sprintf("%v\n", d.Profiles))
-
-	return str.String()
+func (s sender) SendList(w http.ResponseWriter, r *http.Request) {
+	serviceResult := s.sendList.HoldList()
+	fmt.Fprintf(w, serviceResult.String())
 }
 
 // router/router.go
-func Run(url string) {
-	http.HandleFunc("/get", SendList)
+type router struct {
+	routeList Sender
+}
+
+type Router interface {
+	Run(url string)
+}
+
+func NewRouter(s Sender) Router {
+	router := &router{routeList: s}
+	router.setup()
+
+	return router
+}
+
+func (r *router) Run(url string) {
 	http.ListenAndServe(url, nil)
+}
+
+func (r *router) setup() {
+	http.HandleFunc("/get", r.routeList.SendList)
 }
 
 // main.go
 func main() {
 	// common/env/variables (.env)
+	Load()
 	fmt.Printf("\nDB: %v\nRUL: %v\n", DB, URL)
 
 	// repository/repository.go
-	resR := FindPosts()
+	repo := NewRepository()
+	fmt.Printf("\nRepository: %v\n", repo)
+	resR := repo.FindPosts()
 	fmt.Printf("\nRepository Response: %v\n", resR)
 
 	// service/service.go (model/model.go)
-	resS := HoldList()
-	fmt.Printf("\nService Response: \n%v\n", resS)
+	serv := NewService(repo)
+	fmt.Printf("\nService: \n%v", serv.HoldList())
+	resS := serv.HoldList()
+	fmt.Printf("\nService Response: \n%v", resS)
 
 	// controller/controller.go (model/model.go)
+	cont := NewController(serv)
+	fmt.Printf("\nController: %v\n", cont)
 
 	// router/router.go
-	Run(URL)
+	rout := NewRouter(cont)
+	fmt.Printf("\nRouter: %v\n", rout)
+	rout.Run(URL)
 }
